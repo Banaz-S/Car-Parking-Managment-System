@@ -18,13 +18,23 @@ public class ClientSide {
         in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
     }
 
-    public void register(String username, String email, String phoneNumber, String password, String plateNumber)
+    public void register(String username, String email, String phoneNumber, String password, String plateNumber,
+            String parkingLotName, String spotNumber, String entryTime, String exitTime, double fee)
             throws IOException {
+
+        // Send user details to the server
         out.println(username);
         out.println(email);
         out.println(phoneNumber);
         out.println(password);
         out.println(plateNumber);
+
+        // Send parking details to the server
+        out.println(parkingLotName);
+        out.println(spotNumber);
+        out.println(entryTime);
+        out.println(exitTime);
+        out.println(fee);
 
         String response = in.readLine();
         System.out.println("Server response: " + response);
@@ -44,10 +54,9 @@ public class ClientSide {
         try {
             client.connect("127.0.0.1", 12345);
             System.out.println("Please register to park your car.");
-            // User Reisteration
-            // Username Validation
-            String username;
 
+            // User Registration
+            String username;
             while (true) {
                 System.out.print("Enter your username: ");
                 username = scanner.nextLine();
@@ -66,7 +75,7 @@ public class ClientSide {
             while (true) {
                 System.out.print("Enter your phone number (only numbers): ");
                 phoneNumber = scanner.nextLine();
-                if (User.isPhoneNumberValid(phoneNumber)) { // Ensure this method exists in User class
+                if (User.isPhoneNumberValid(phoneNumber)) {
                     break;
                 } else {
                     System.out.println("Invalid phone number. Try again.");
@@ -78,7 +87,7 @@ public class ClientSide {
             while (true) {
                 System.out.print("Enter your password (at least 8 characters, one uppercase letter, and one number): ");
                 password = scanner.nextLine();
-                if (User.isPasswordValid(password)) { // Ensure this method exists in User class
+                if (User.isPasswordValid(password)) {
                     break;
                 } else {
                     System.out.println("Invalid password. Please try again.");
@@ -88,16 +97,14 @@ public class ClientSide {
             User user = new User(username, email, phoneNumber, password);
             System.out.println("User registration successful!");
 
-            // Step 2: Register the Car
-            System.out.println("Now, please register your car.");
+            // Car Registration
             System.out.print("Enter your car's plate number: ");
             String plateNumber = scanner.nextLine();
 
             Car car = new Car(plateNumber, user);
-
             System.out.println("Car registration successful!");
 
-            // Step 3: Choose Parking Option
+            // Choose Parking Option
             ParkingLot vipLot = new ParkingLot("First Floor", 100, PRIORITY.VIP);
             ParkingLot normalLot = new ParkingLot("Under Floor", 100, PRIORITY.NORMAL);
             ParkingLot reserveLot = new ParkingLot("Reservation Park", 100, null);
@@ -119,7 +126,7 @@ public class ClientSide {
                 selectedParkingLot = reserveLot;
             }
 
-            // Step 4: Input Entry and Exit Times
+            // Input Entry and Exit Times
             System.out.print("Enter entry/start time (yyyy-MM-dd HH:mm): ");
             String entryTimeStr = scanner.nextLine();
             Date entryTime;
@@ -140,7 +147,7 @@ public class ClientSide {
                 return;
             }
 
-            // Step 5: Park the Car
+            // Calculate Parking Fee
             Spot availableSpot = SpotManager.findAvailableSpot(selectedParkingLot);
             if (availableSpot != null) {
                 double fee;
@@ -150,52 +157,18 @@ public class ClientSide {
                     fee = 100;
                 }
 
-                try (FileWriter writer = new FileWriter("C:\\Users\\PC\\OneDrive\\Desktop\\UserData.txt", true)) {
+                System.out.println("Parking Fee: $" + fee);
 
-                    // Save user data
-                    writer.write("User Registration:\n");
-                    writer.write("Username: " + username + "\n");
-                    writer.write("Email: " + email + "\n");
-                    writer.write("Phone Number: " + phoneNumber + "\n");
-                    writer.write("---------------\n");
-
-                    // Save car registration data
-                    writer.write("Car Registration:\n");
-                    writer.write("Plate Number: " + plateNumber + "\n");
-                    writer.write("---------------\n");
-
-                    // Save parking data
-                    writer.write("Parking Details:\n");
-                    writer.write("Parking Lot: " + selectedParkingLot.getName() + "\n");
-                    writer.write("Spot Number: " + availableSpot.getSpotNumber() + "\n");
-                    writer.write("Entry Time: " + dateFormat.format(entryTime) + "\n");
-                    writer.write("Expected Exit Time: " + dateFormat.format(expectedExitTime) + "\n");
-                    writer.write("Parking Fee: $" + fee + "\n");
-                    writer.write("===============\n\n\n");
-
-                    System.out.println("All registration and parking details saved to file successfully.");
-
-                    if (choice == 1 || choice == 2) {
-                        System.out.println("Car parked successfully in spot number: " + availableSpot.getSpotNumber());
-                        System.out.println("Parking Fee: $" + fee);
-                    } else {
-                        System.out.println("Reservation successful in spot number: " + availableSpot.getSpotNumber());
-                        System.out.println("Monthly Fee: $" + fee);
-                    }
-                } catch (IOException e) {
-                    System.out.println("An error occurred while saving data to the file.");
-                    e.printStackTrace();
-                }
+                // Register and send all data to the server
+                client.register(username, email, phoneNumber, password, plateNumber,
+                        selectedParkingLot.getName(), String.valueOf(availableSpot.getSpotNumber()),
+                        dateFormat.format(entryTime), dateFormat.format(expectedExitTime), fee);
 
                 availableSpot.setAvailable(false); // Mark the spot as taken
             } else {
                 System.out.println("Sorry, no available spots at the moment.");
             }
 
-            scanner.close();
-
-            // Register user with actual inputs
-            client.register(username, email, phoneNumber, password, plateNumber);
             client.disconnect();
 
         } catch (IOException e) {
@@ -205,7 +178,7 @@ public class ClientSide {
         }
     }
 
-    // the method to check if the ser with this sername exist or not
+    // Check if the username already exists in the file
     private static boolean isUsernameExists(String username) {
         try (BufferedReader reader = new BufferedReader(
                 new FileReader("C:\\Users\\PC\\OneDrive\\Desktop\\UserData.txt"))) {
@@ -228,5 +201,4 @@ public class ClientSide {
         double rate = parkingLot.getPriority() == PRIORITY.VIP ? 5.0 : 3.0;
         return durationInHours * rate;
     }
-
 }
