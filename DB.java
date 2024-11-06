@@ -5,7 +5,7 @@ import java.sql.Statement;
 
 public class DB {
 
-    static final String DB_URL = "jdbc:mysql://localhost:3306";
+    static final String DB_URL = "jdbc:mysql://localhost:3306/car_parking_db";
     static final String USER = "root";
     static final String PASS = "Banaz12";
 
